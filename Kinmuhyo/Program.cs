@@ -70,7 +70,7 @@ namespace Kinmuhyo
             }
 
             // 原価表フォルダの売上原価表*ファイルをすべて処理する
-            foreach (var file in Directory.EnumerateFiles(_genkahyoFolder, "売上原価表システム３室*", SearchOption.TopDirectoryOnly))
+            foreach (var file in Directory.EnumerateFiles(_genkahyoFolder, "売上原価表*", SearchOption.TopDirectoryOnly))
             {
                 try
                 {
@@ -234,7 +234,7 @@ namespace Kinmuhyo
             var kokyaku = GetKokyaku(pkg);
 
             // 社員別実績時間シートを取得する
-            var ws = pkg.Workbook.Worksheets["社員別実績時間"];
+            var ws = pkg.Workbook.Worksheets["社員別実績時間明細"];
 
             // 使用されているセル範囲を取得する
             var usedRange = ws.Cells[ws.Dimension.Address];
@@ -302,7 +302,7 @@ namespace Kinmuhyo
             var kokyaku = GetKokyaku(pkg);
 
             // 顧客別ジョブ採算シートを取得する
-            var ws = pkg.Workbook.Worksheets["顧客別ジョブ採算"];
+            var ws = pkg.Workbook.Worksheets["顧客別ジョブ採算明細"];
 
             // 使用されているセル範囲を取得する
             var usedRange = ws.Cells[ws.Dimension.Address];
@@ -322,8 +322,24 @@ namespace Kinmuhyo
             ws.Cells[row, 8].Value = "直接原価";
             row++;
 
+            // 部署、年月、客先名、契約、分類で集計
+            var sumGenka =
+                _genkaList.Where(e => e.Bunrui == "売上" | e.Bunrui == "仕入")
+                .GroupBy(group => new { group.Busho, group.Nengetstu, group.KyakusakiName, group.Keiyaku })
+                .Select(e => new 
+                { 
+                    e.Key.Busho,
+                    e.Key.Nengetstu,
+                    e.Key.KyakusakiName,
+                    e.Key.Keiyaku,
+                    UriageYotei = e.Sum(x => x.Bunrui == "売上" ? x.Yotei : 0m),
+                    UriageJisseki = e.Sum(x => x.Bunrui == "売上" ? x.Jisseki : 0m),
+                    ShiireYotei = e.Sum(x => x.Bunrui == "仕入" ? x.Yotei : 0m),
+                    ShiireJisseki = e.Sum(x => x.Bunrui == "仕入" ? x.Jisseki : 0m),
+                });
+
             // 結果を設定
-            foreach (var genka in _genkaList.Where(e => e.Bunrui == "売上" | e.Bunrui == "仕入"))
+            foreach (var genka in sumGenka)
             {
                 ws.Cells[row, 1].Value = genka.Busho;
                 ws.Cells[row, 2].Value = genka.Nengetstu;
@@ -338,23 +354,13 @@ namespace Kinmuhyo
                 decimal kingaku;
                 if (DateTime.Today.Date <= new DateTime(genka.Nengetstu.Year, genka.Nengetstu.Month, _jissekiHaneiDay))
                 {
-                    kingaku = genka.Jisseki;
+                    ws.Cells[row, 6].Value = genka.UriageJisseki;
+                    ws.Cells[row, 7].Value = genka.ShiireJisseki;
                 }
                 else
                 {
-                    kingaku = genka.Yotei;
-                }
-                
-                // 売上と予定に設定
-                if (genka.Bunrui == "売上")
-                {
-                    ws.Cells[row, 6].Value = kingaku;
-                    ws.Cells[row, 7].Value = 0m;
-                }
-                if (genka.Bunrui == "仕入")
-                {
-                    ws.Cells[row, 6].Value = 0m;
-                    ws.Cells[row, 7].Value = kingaku;
+                    ws.Cells[row, 6].Value = genka.UriageYotei;
+                    ws.Cells[row, 7].Value = genka.ShiireYotei;
                 }
 
                 // 次行

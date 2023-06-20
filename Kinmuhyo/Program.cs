@@ -37,55 +37,57 @@ namespace Kinmuhyo
             _jissekiHaneiDay = int.Parse(configuration["JissekiHaneiDay"]);
 
             // 勤務表フォルダのチェック
-            if (!Directory.Exists(_kinmuhyoFolder))
+            if (Directory.Exists(_kinmuhyoFolder))
             {
-                Console.WriteLine($"パスが存在しません。({_kinmuhyoFolder}) ");
-                return;
+                // 勤務表フォルダの*.xlsmファイルをすべて処理する
+                foreach (var file in Directory.EnumerateFiles(_kinmuhyoFolder, "*.xlsm", SearchOption.TopDirectoryOnly))
+                {
+                    try
+                    {
+                        ReadKinmuhyo(file);
+                    }
+                    catch (SecurityException)
+                    {
+                        Console.WriteLine($"は処理できません。({file})");
+                    }
+                }
+
+                // 結果をコンソール出力
+                foreach (var jisseki in _jissekiList)
+                {
+                    Console.WriteLine($"{jisseki.ShainBango},{jisseki.ShainName},{jisseki.Nengetstu},{jisseki.KyakusakiCode},{jisseki.KyakusakiName},{jisseki.Jikan}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"パスが存在しないため処理をスキップします。({_kinmuhyoFolder}) ");
             }
 
             // 原価表フォルダのチェック
-            if (!Directory.Exists(_genkahyoFolder))
+            if (Directory.Exists(_genkahyoFolder))
             {
-                Console.WriteLine($"パスが存在しません。({_genkahyoFolder}) ");
-                return;
-            }
-
-            // 勤務表フォルダの*.xlsmファイルをすべて処理する
-            foreach (var file in Directory.EnumerateFiles(_kinmuhyoFolder, "*.xlsm", SearchOption.TopDirectoryOnly))
-            {
-                try
+                // 原価表フォルダの売上原価表*ファイルをすべて処理する
+                foreach (var file in Directory.EnumerateFiles(_genkahyoFolder, "売上原価表*", SearchOption.TopDirectoryOnly))
                 {
-                    ReadKinmuhyo(file);
+                    try
+                    {
+                        ReadGenkahyo(file);
+                    }
+                    catch (SecurityException)
+                    {
+                        Console.WriteLine($"は処理できません。({file})");
+                    }
                 }
-                catch (SecurityException)
-                {
-                    Console.WriteLine($"は処理できません。({file})");
-                }
-            }
 
-            // 結果をコンソール出力
-            foreach (var jisseki in _jissekiList)
-            {
-                Console.WriteLine($"{jisseki.ShainBango},{jisseki.ShainName},{jisseki.Nengetstu},{jisseki.KyakusakiCode},{jisseki.KyakusakiName},{jisseki.Jikan}");
-            }
-
-            // 原価表フォルダの売上原価表*ファイルをすべて処理する
-            foreach (var file in Directory.EnumerateFiles(_genkahyoFolder, "売上原価表*", SearchOption.TopDirectoryOnly))
-            {
-                try
+                // 結果をコンソール出力
+                foreach (var genka in _genkaList)
                 {
-                    ReadGenkahyo(file);
-                }
-                catch (SecurityException)
-                {
-                    Console.WriteLine($"は処理できません。({file})");
+                    Console.WriteLine($"{genka.Nengetstu},{genka.Bunrui},{genka.Busho},{genka.KyakusakiName},{genka.Keiyaku},{genka.Yotei},{genka.Jisseki}");
                 }
             }
-
-            // 結果をコンソール出力
-            foreach (var genka in _genkaList)
+            else
             {
-                Console.WriteLine($"{genka.Nengetstu},{genka.Bunrui},{genka.Busho},{genka.KyakusakiName},{genka.Keiyaku},{genka.Yotei},{genka.Jisseki}");
+                Console.WriteLine($"パスが存在しないため処理をスキップします。({_genkahyoFolder}) ");
             }
 
             // 結果をExcelに出力
